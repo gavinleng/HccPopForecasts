@@ -15,7 +15,7 @@ import datetime
 
 
 def download(url, sheets, reqFields, outPath):
-    ageReq = reqFields
+    ageReq = [x.title() for x in reqFields]
     dName = outPath
 
     col = ['District', 'LSOA', 'Year', 'Gender', 'Age', 'Value', 'Production Date']
