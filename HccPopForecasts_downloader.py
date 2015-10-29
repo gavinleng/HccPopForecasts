@@ -10,12 +10,9 @@ import datetime
 
 # url = "http://documents.hants.gov.uk/population/2014SAPFforthewebLSOAbyageandgender.xlsx"
 # output_path = "tempHccPopForecasts.csv"
-# sheets = ["2014", "2016", "2021"]
-# required_indicators = ["Aged 0", "Aged 1", "Aged 20-24", "Aged 80-84", "Aged 90+"]
 
 
-def download(url, sheets, reqFields, outPath):
-    ageReq = [x.title() for x in reqFields]
+def download(url, outPath):
     dName = outPath
 
     col = ['District', 'LSOA', 'Year', 'Gender', 'Age', 'Value', 'Production Date']
@@ -42,57 +39,57 @@ def download(url, sheets, reqFields, outPath):
 
     # operate this excel file
     logfile.write(str(now()) + ' excel file loading\n')
+    print('excel file loading------')
     xd = pd.ExcelFile(socket)
-    sName = xd.sheet_names
+    sheets = xd.sheet_names
 
     raw_data = {}
     for j in col:
         raw_data[j] = []
 
     for sheet in sheets:
-        if sheet not in sName:
-            errfile.write(str(now()) + " Requested sheet " + str(sheet) + " does not match the excel file. Please check the file at: " + str(url) + " . End progress\n")
-            logfile.write(str(now()) + ' error and end progress\n')
-            sys.exit("Requested sheet " + str(sheet) + " does not match the excel file. Please check the file at: " + url)
-
         df = xd.parse(sheet)
 
         logfile.write(str(now()) + ' for sheet ' + str(sheet) + '------\n')
         logfile.write(str(now()) + ' indicator checking\n')
         print('for sheet ' + str(sheet) + ' ------')
         print('indicator checking------')
-        for i in range(df.shape[0]):
-            numCol = []
-            for k in ageReq:
-                for j in range(df.shape[1]):
-                    if df.iloc[i][j] == k:
-                        numCol.append(j)
-                        restartIndex = i + 1
 
-            if len(numCol) == len(ageReq):
+        fflag = 0
+        for i in range(df.shape[0]):
+            for j in range(df.shape[1]):
+                if ('Aged' in str(df.iloc[i][j]).split()) and (len(str(df.iloc[i][j]).split()) == 2):
+                    fflag = 1
+                    break
+
+            if fflag == 1:
+                ageReq = df.iloc[i][j:-1].tolist()
+                restartIndex = i + 1
                 break
 
-        if len(numCol) != len(ageReq):
-            errfile.write(str(now()) + " Requested data " + str(ageReq).strip(
-                '[]') + " don't match the excel file. Please check the file at: " + str(url) + " . End progress\n")
+        if fflag == 0:
+            errfile.write(str(now()) + " The sheet " + str(sheet) + " has not required fields, such as 'Aged 10-14'. Please check the file at: " + str(url) + " . End progress\n")
             logfile.write(str(now()) + ' error and end progress\n')
-            sys.exit("Requested data " + str(ageReq).strip(
-                '[]') + " don't match the excel file. Please check the file at: " + url)
+            sys.exit("The sheet " + str(sheet) + " has not not required fields, such as 'Aged 10-14'. Please check the file at: " + url)
 
         logfile.write(str(now()) + ' data reading\n')
         print('data reading------')
         for i in range(restartIndex, df.shape[0]):
             if str(df.iloc[i][0]):
-                for k in range(len(numCol)):
-                    raw_data[col[0]].append(df.iloc[i][0])
-                    raw_data[col[1]].append(df.iloc[i][1])
-                    raw_data[col[2]].append(sheet)
-                    raw_data[col[3]].append(df.iloc[i][2])
-                    raw_data[col[4]].append(ageReq[k].split(' ')[1])
-                    raw_data[col[5]].append(df.iloc[i][numCol[k]])
-                    raw_data[col[6]].append(pDate)
+                for k in ageReq:
+                    raw_data[col[4]].append(k.split()[1])
+
+                raw_data[col[0]] = raw_data[col[0]] + [(df.iloc[i][0])] * len(ageReq)
+                raw_data[col[1]] = raw_data[col[1]] + [(df.iloc[i][1])] * len(ageReq)
+                raw_data[col[3]] = raw_data[col[3]] + [(df.iloc[i][2])] * len(ageReq)
+                raw_data[col[5]] = raw_data[col[5]] + df.iloc[i][j:-1].tolist()
+
+        raw_data[col[2]] = raw_data[col[2]] + [sheet] * len(ageReq) * (df.shape[0] - restartIndex)
+
+    raw_data[col[6]] = [pDate] * len(raw_data[col[0]])
 
     # save csv file
+    logfile.write(str(now()) + ' writing to file\n')
     print('writing to file ' + dName)
     dfw = pd.DataFrame(raw_data, columns=col)
     dfw.to_csv(dName, index=False)
@@ -115,9 +112,7 @@ args = parser.parse_args()
 if args.generateConfig:
     obj = {
         "url": "http://documents.hants.gov.uk/population/2014SAPFforthewebLSOAbyageandgender.xlsx",
-        "outPath": "tempHccPopForecasts.csv",
-        "sheet": ["2014", "2016", "2021"],
-        "reqFields": ["Aged 0", "Aged 1", "Aged 20-24", "Aged 80-84", "Aged 90+"]
+        "outPath": "tempHccPopForecasts.csv"
     }
 
     logfile = open("log_tempHccPopForecasts.log", "w")
@@ -144,4 +139,4 @@ with open(args.configFile) as json_file:
     logfile.write(str(now()) + ' read config file\n')
     print("read config file")
 
-download(oConfig["url"], oConfig["sheet"], oConfig["reqFields"], oConfig["outPath"])
+download(oConfig["url"], oConfig["outPath"])
