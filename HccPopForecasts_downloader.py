@@ -103,8 +103,8 @@ def now():
 
 
 parser = argparse.ArgumentParser(
-    description='Extract online Youth agelessness Data Excel file Section 1 to .csv file.')
-parser.add_argument("--generateConfig", "-g", help="generate a config file called config_Yageless.json",
+    description='Extract online HCC Pop Forecasts Data Excel file Section 1 to .csv file.')
+parser.add_argument("--generateConfig", "-g", help="generate a config file called config_tempHccPopForecasts.json",
                     action="store_true")
 parser.add_argument("--configFile", "-c", help="path for config file")
 args = parser.parse_args()
