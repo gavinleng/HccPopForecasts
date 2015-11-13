@@ -1,30 +1,32 @@
 __author__ = 'G'
 
 import sys
-import urllib
+sys.path.append('../harvesterlib')
+
 import pandas as pd
 import argparse
 import json
-import datetime
-import hashlib
+
+import now
+import openurl
+import datasave as dsave
+
 
 # url = "http://documents.hants.gov.uk/population/2014SAPFforthewebLSOAbyageandgender.xlsx"
 # output_path = "tempHccPopForecasts.csv"
 
 
-def download(url, outPath):
+def download(url, outPath, col, keyCol, digitCheckCol, noDigitRemoveFields):
     dName = outPath
-
-    col = ['District', 'LSOA', 'Year', 'Gender', 'Age', 'Value', 'Production Date', 'pkey']
 
     listurl = url.split('/')
     pDate = listurl[len(listurl) - 1][:4]
 
     # open url
-    socket = openurl(url)
+    socket = openurl.openurl(url, logfile, errfile)
 
     # operate this excel file
-    logfile.write(str(now()) + ' excel file loading\n')
+    logfile.write(str(now.now()) + ' excel file loading\n')
     print('excel file loading------')
     xd = pd.ExcelFile(socket)
     sheets = xd.sheet_names
@@ -36,8 +38,8 @@ def download(url, outPath):
     for sheet in sheets:
         df = xd.parse(sheet)
 
-        logfile.write(str(now()) + ' for sheet ' + str(sheet) + '------\n')
-        logfile.write(str(now()) + ' indicator checking\n')
+        logfile.write(str(now.now()) + ' for sheet ' + str(sheet) + '------\n')
+        logfile.write(str(now.now()) + ' indicator checking\n')
         print('for sheet ' + str(sheet) + ' ------')
         print('indicator checking------')
 
@@ -55,12 +57,12 @@ def download(url, outPath):
                 break
 
         if fflag == 0:
-            errfile.write(str(now()) + " The sheet " + str(sheet) + " has not required fields, such as 'Aged 10-14'. Please check the file at: " + str(url) + " . End progress\n")
-            logfile.write(str(now()) + ' error and end progress\n')
+            errfile.write(str(now.now()) + " The sheet " + str(sheet) + " has not required fields, such as 'Aged 10-14'. Please check the file at: " + str(url) + " . End progress\n")
+            logfile.write(str(now.now()) + ' error and end progress\n')
             sys.exit("The sheet " + str(sheet) + " has not not required fields, such as 'Aged 10-14'. Please check the file at: " + url)
 
         # data reading
-        logfile.write(str(now()) + ' data reading\n')
+        logfile.write(str(now.now()) + ' data reading\n')
         print('data reading------')
         for i in range(restartIndex, df.shape[0]):
             if str(df.iloc[i][0]):
@@ -75,61 +77,11 @@ def download(url, outPath):
         raw_data[col[2]] = raw_data[col[2]] + [sheet] * len(ageReq) * (df.shape[0] - restartIndex)
 
     raw_data[col[6]] = [pDate] * len(raw_data[col[0]])
-    logfile.write(str(now()) + ' data reading end\n')
+    logfile.write(str(now.now()) + ' data reading end\n')
     print('data reading end------')
 
-    # create primary key by md5 for each row
-    logfile.write(str(now()) + ' create primary key\n')
-    print('create primary key------')
-    keyCol = [0, 1, 2, 3, 4, 6]
-    raw_data[col[-1]] = fpkey(raw_data, col, keyCol)
-    logfile.write(str(now()) + ' create primary key end\n')
-    print('create primary key end------')
-
     # save csv file
-    logfile.write(str(now()) + ' writing to file\n')
-    print('writing to file ' + dName)
-    dfw = pd.DataFrame(raw_data, columns=col)
-    dfw.to_csv(dName, index=False)
-    logfile.write(str(now()) + ' has been extracted and saved as ' + str(dName) + '\n')
-    print('Requested data has been extracted and saved as ' + dName)
-    logfile.write(str(now()) + ' finished\n')
-    print("finished")
-
-def openurl(url):
-    try:
-        socket = urllib.request.urlopen(url)
-    except urllib.error.HTTPError as e:
-        errfile.write(str(now()) + ' file download HTTPError is ' + str(e.code) + ' . End progress\n')
-        logfile.write(str(now()) + ' error and end progress\n')
-        sys.exit('file download HTTPError = ' + str(e.code))
-    except urllib.error.URLError as e:
-        errfile.write(str(now()) + ' file download URLError is ' + str(e.args) + ' . End progress\n')
-        logfile.write(str(now()) + ' error and end progress\n')
-        sys.exit('file download URLError = ' + str(e.args))
-    except Exception:
-        print('file download error')
-        import traceback
-        errfile.write(str(now()) + ' generic exception: ' + str(traceback.format_exc()) + ' . End progress\n')
-        logfile.write(str(now()) + ' error and end progress\n')
-        sys.exit('generic exception: ' + traceback.format_exc())
-
-    return socket
-
-def fpkey(data, col, keyCol):
-    mystring = ''
-    pkey = []
-    for i in range(len(data[col[0]])):
-        print('pkey------' + str(i))
-        for j in keyCol:
-            mystring += str(data[col[j]][i])
-        mymd5 = hashlib.md5(mystring.encode()).hexdigest()
-        pkey.append(mymd5)
-
-    return pkey
-
-def now():
-    return datetime.datetime.now()
+    dsave.save(raw_data, col, keyCol, digitCheckCol, noDigitRemoveFields, dName, logfile)
 
 
 parser = argparse.ArgumentParser(
@@ -142,17 +94,21 @@ args = parser.parse_args()
 if args.generateConfig:
     obj = {
         "url": "http://documents.hants.gov.uk/population/2014SAPFforthewebLSOAbyageandgender.xlsx",
-        "outPath": "tempHccPopForecasts.csv"
+        "outPath": "tempHccPopForecasts.csv",
+        "colFields": ['District', 'LSOA', 'Year', 'Gender', 'Age', 'Value', 'Production Date'],
+        "primaryKeyCol": ['District', 'LSOA', 'Year', 'Gender', 'Age', 'Production Date'],#[0, 1, 2, 3, 4, 6],
+        "digitCheckCol": ['Value'],#[5],
+        "noDigitRemoveFields": []
     }
 
     logfile = open("log_tempHccPopForecasts.log", "w")
-    logfile.write(str(now()) + ' start\n')
+    logfile.write(str(now.now()) + ' start\n')
 
     errfile = open("err_tempHccPopForecasts.err", "w")
 
     with open("config_tempHccPopForecasts.json", "w") as outfile:
         json.dump(obj, outfile, indent=4)
-        logfile.write(str(now()) + ' config file generated and end\n')
+        logfile.write(str(now.now()) + ' config file generated and end\n')
         sys.exit("config file generated")
 
 if args.configFile == None:
@@ -162,11 +118,11 @@ with open(args.configFile) as json_file:
     oConfig = json.load(json_file)
 
     logfile = open('log_' + oConfig["outPath"].split('.')[0] + '.log', "w")
-    logfile.write(str(now()) + ' start\n')
+    logfile.write(str(now.now()) + ' start\n')
 
     errfile = open('err_' + oConfig["outPath"].split('.')[0] + '.err', "w")
 
-    logfile.write(str(now()) + ' read config file\n')
+    logfile.write(str(now.now()) + ' read config file\n')
     print("read config file")
 
-download(oConfig["url"], oConfig["outPath"])
+download(oConfig["url"], oConfig["outPath"], oConfig["colFields"], oConfig["primaryKeyCol"], oConfig["digitCheckCol"], oConfig["noDigitRemoveFields"])
