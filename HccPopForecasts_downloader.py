@@ -23,13 +23,14 @@ def download(url, outPath, col, keyCol, digitCheckCol, noDigitRemoveFields):
     pDate = listurl[len(listurl) - 1][:4]
 
     # open url
-    socket = openurl.openurl(url, logfile, errfile)
+    #socket = openurl.openurl(url, logfile, errfile)
 
     # operate this excel file
     logfile.write(str(now.now()) + ' excel file loading\n')
     print('excel file loading------')
-    xd = pd.ExcelFile(socket)
-    sheets = xd.sheet_names
+    xd = pd.ExcelFile(url)
+    #sheets = xd.sheet_names
+    sheets = ['2014', '2015']
 
     raw_data = {}
     for j in col:
@@ -67,16 +68,19 @@ def download(url, outPath, col, keyCol, digitCheckCol, noDigitRemoveFields):
         for i in range(restartIndex, df.shape[0]):
             if str(df.iloc[i][0]):
                 for k in ageReq:
-                    raw_data[col[4]].append(k.split()[1])
+                    raw_data[col[5]].append(k.split()[1])
 
                 raw_data[col[0]] = raw_data[col[0]] + [(df.iloc[i][0])] * len(ageReq)
-                raw_data[col[1]] = raw_data[col[1]] + [(df.iloc[i][1]).split()[-1]] * len(ageReq)
-                raw_data[col[3]] = raw_data[col[3]] + [(df.iloc[i][2])] * len(ageReq)
-                raw_data[col[5]] = raw_data[col[5]] + df.iloc[i][j:-1].tolist()
+                raw_data[col[1]] = raw_data[col[1]] + [(df.iloc[i][1])] * len(ageReq)
+                raw_data[col[2]] = raw_data[col[2]] + [(df.iloc[i][2])] * len(ageReq)
+                raw_data[col[4]] = raw_data[col[4]] + [(df.iloc[i][3])] * len(ageReq)
+                raw_data[col[6]] = raw_data[col[6]] + df.iloc[i][j:-1].tolist()
 
-        raw_data[col[2]] = raw_data[col[2]] + [sheet] * len(ageReq) * (df.shape[0] - restartIndex)
+        raw_data[col[3]] = raw_data[col[3]] + [sheet] * len(ageReq) * (df.shape[0] - restartIndex)
 
-    raw_data[col[6]] = [pDate] * len(raw_data[col[0]])
+
+    raw_data[col[7]] = [pDate] * len(raw_data[col[0]])
+    raw_data[col[8]] = ["HCC_SAPF_2015"] * len(raw_data[col[0]])
     logfile.write(str(now.now()) + ' data reading end\n')
     print('data reading end------')
 
@@ -93,11 +97,11 @@ args = parser.parse_args()
 
 if args.generateConfig:
     obj = {
-        "url": "http://documents.hants.gov.uk/population/2014SAPFforthewebLSOAbyageandgender.xlsx",
+        "url": "./data/2014HccPopForecasts.xlsx",
         "outPath": "tempHccPopForecasts.csv",
-        "colFields": ['District', 'LSOA', 'Year', 'Gender', 'Age', 'Value', 'Production Date'],
-        "primaryKeyCol": ['District', 'LSOA', 'Year', 'Gender', 'Age', 'Production Date'],#[0, 1, 2, 3, 4, 6],
-        "digitCheckCol": ['Value'],#[5],
+        "colFields": ['District', 'ONSCode', 'LSOA', 'Year', 'Gender', 'Ageband', 'Value', 'Production Date', 'ScenarioID'],
+        "primaryKeyCol": [],
+        "digitCheckCol": ['Value'],
         "noDigitRemoveFields": []
     }
 

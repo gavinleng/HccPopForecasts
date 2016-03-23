@@ -1,0 +1,20 @@
+{
+    "digitCheckCol": [
+        "Value"
+    ],
+    "primaryKeyCol": [],
+    "outPath": "tempHccPopForecasts.csv",
+    "noDigitRemoveFields": [],
+    "colFields": [
+        "District",
+        "ONSCode",
+        "LSOA",
+        "Year",
+        "Gender",
+        "Ageband",
+        "Value",
+        "Production Date",
+        "ScenarioID"
+    ],
+    "url": "./data/2014HccPopForecasts.xlsx"
+}
