@@ -22,15 +22,11 @@ def download(url, outPath, col, keyCol, digitCheckCol, noDigitRemoveFields):
     listurl = url.split('/')
     pDate = listurl[len(listurl) - 1][:4]
 
-    # open url
-    #socket = openurl.openurl(url, logfile, errfile)
-
     # operate this excel file
     logfile.write(str(now.now()) + ' excel file loading\n')
     print('excel file loading------')
     xd = pd.ExcelFile(url)
-    #sheets = xd.sheet_names
-    sheets = ['2014', '2015']
+    sheets = xd.sheet_names
 
     raw_data = {}
     for j in col:
